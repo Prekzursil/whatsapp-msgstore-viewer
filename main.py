@@ -28,6 +28,14 @@ import importlib
 import os
 import sys
 
+# pythonw/frozen runs have stderr/stdout=None; kivy logging on a None stream
+# crashes at import. Redirect to devnull before anything kivy-side runs.
+if getattr(sys, 'frozen', False) or sys.stderr is None or sys.stdout is None:
+    if sys.stderr is None:
+        sys.stderr = open(os.devnull, 'w')
+    if sys.stdout is None:
+        sys.stdout = open(os.devnull, 'w')
+
 
 # Set KIVY_TEXT to pil to use the PIL text engine
 os.environ['KIVY_TEXT'] = 'pil'
