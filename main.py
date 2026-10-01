@@ -47,6 +47,14 @@ APP_DIR = os.path.dirname(os.path.abspath(__file__))
 ICON_PATH = os.path.join(APP_DIR, 'assets', 'images', 'app-icon.ico')
 TASKBAR_IDENTITY_AUMID = "Prekzursil.WhatsAppArchiveViewer"
 
+# Set the process AUMID HERE - BEFORE the kivy.core.window import below.
+# Kivy 2.3.1 constructs the real window AT IMPORT TIME of kivy.core.window,
+# so an identity call placed after the imports returns S_OK but the taskbar
+# has already registered the window under the default process-path identity
+# (measured 2026-10-01: button automationId fell back to the pythonw path).
+_AUMID_HRESULT = _set_taskbar_identity()
+_write_launch_receipt(_AUMID_HRESULT)
+
 from kivy.resources import resource_add_path
 
 from kivy import Config
@@ -204,11 +212,9 @@ def run():
     # ".1" string there silently overrode this module's value).
 
 
-# Hardened taskbar identity: single owner (main.py). Runs at import time,
-# BEFORE any window creation, exactly as the API requires.
-_AUMID_HRESULT = _set_taskbar_identity()
-_write_launch_receipt(_AUMID_HRESULT)
-
+# Taskbar identity is set at the TOP of this module (before the
+# kivy.core.window import creates the window). Do not move it below the
+# imports.
 WhatsAppArchiveViewer().run()
 
 
