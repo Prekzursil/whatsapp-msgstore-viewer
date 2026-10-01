@@ -40,6 +40,13 @@ if getattr(sys, 'frozen', False) or sys.stderr is None or sys.stdout is None:
 # Set KIVY_TEXT to pil to use the PIL text engine
 os.environ['KIVY_TEXT'] = 'pil'
 
+# App icon + taskbar identity (single owner: main.py). Absolute path derived
+# from __file__ so the icon resolves regardless of the process CWD; the AUMID
+# must match the one written into the Start Menu shortcut property store.
+APP_DIR = os.path.dirname(os.path.abspath(__file__))
+ICON_PATH = os.path.join(APP_DIR, 'assets', 'images', 'app-icon.ico')
+TASKBAR_IDENTITY_AUMID = "Prekzursil.WhatsAppArchiveViewer"
+
 from kivy.resources import resource_add_path
 
 from kivy import Config
@@ -124,7 +131,7 @@ class WhatsAppArchiveViewer(MDApp):
             self.screens_manager.add_widget(view)
 
     def build_app(self) -> MDScreenManager:
-        self.icon = 'assets/images/app-icon.png'
+        self.icon = ICON_PATH
         self.title = 'WhatsApp Archive Viewer'
 
         self.theme_cls.material_style = "M3"
@@ -158,19 +165,49 @@ class WhatsAppArchiveViewer(MDApp):
     #     if "meta" in modifiers or "ctrl" in modifiers and text == "r":
     #         self.rebuild()
 
+def _set_taskbar_identity():
+    """Set the process AppUserModelID via a hardened ctypes prototype.
+
+    Returns the unsigned HRESULT (0x00000000 == S_OK). argtypes/restype are
+    explicit and this MUST run before any Kivy window exists.
+    """
+    try:
+        import ctypes
+        shell32 = ctypes.windll.shell32
+        shell32.SetCurrentProcessExplicitAppUserModelID.argtypes = [ctypes.c_wchar_p]
+        shell32.SetCurrentProcessExplicitAppUserModelID.restype = ctypes.HRESULT
+        return int(shell32.SetCurrentProcessExplicitAppUserModelID(TASKBAR_IDENTITY_AUMID)) & 0xFFFFFFFF
+    except Exception:
+        return 0xFFFFFFFF
+
+
+def _write_launch_receipt(hr):
+    """Append one startup receipt line: icon path, existence, AUMID HRESULT."""
+    try:
+        import time
+        line = '%s pid=%s icon=%s iconExists=%s aumid=%s aumidHr=0x%08X\n' % (
+            time.strftime('%Y-%m-%dT%H:%M:%S'), os.getpid(), ICON_PATH,
+            os.path.exists(ICON_PATH), TASKBAR_IDENTITY_AUMID, hr)
+        with open(r'D:\whatsapp-reunion\taskbar-verify\launch-receipt.log',
+                  'a', encoding='utf-8') as fh:
+            fh.write(line)
+    except Exception:
+        pass
+
+
 def run():
     if hasattr(sys, '_MEIPASS'):
         resource_add_path(os.path.join(sys._MEIPASS))
-    # Taskbar identity: without an explicit AppUserModelID the Windows taskbar shows
-# the generic python.exe icon even with window icons set (measured 2026-10-01).
-# Must be set BEFORE the Kivy window is created inside .run().
-try:
-    import ctypes
-    ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(
-        "Prekzursil.WhatsAppArchiveViewer")
-except Exception:
-    pass
+    # NOTE: the taskbar identity (AUMID) is set at module level below, before
+    # WhatsAppArchiveViewer().run() creates the Kivy window. run_wmv.pyw no
+    # longer sets its own AUMID (the first call per process wins, and the old
+    # ".1" string there silently overrode this module's value).
 
+
+# Hardened taskbar identity: single owner (main.py). Runs at import time,
+# BEFORE any window creation, exactly as the API requires.
+_AUMID_HRESULT = _set_taskbar_identity()
+_write_launch_receipt(_AUMID_HRESULT)
 
 WhatsAppArchiveViewer().run()
 
