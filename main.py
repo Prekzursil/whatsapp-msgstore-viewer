@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-Whatsapp Msgstore Viewer(WMV)
+WhatsApp Archive Viewer(WMV)
 WMV is a free, open source and cross-platform app to decrypt, read and view the Whatsapp msgstore.db database.
 
 (C) 2023 [absadiki](https://github.com/absadiki)
@@ -60,7 +60,7 @@ importlib.reload(View.screens)
 screens = View.screens.screens
 
 
-class whatsappMsgstoreViewer(MDApp):
+class WhatsAppArchiveViewer(MDApp):
     KV_DIRS = [os.path.join(os.getcwd(), "View")]
     version = __version__
     g_page = __github__
@@ -161,7 +161,18 @@ class whatsappMsgstoreViewer(MDApp):
 def run():
     if hasattr(sys, '_MEIPASS'):
         resource_add_path(os.path.join(sys._MEIPASS))
-    whatsappMsgstoreViewer().run()
+    # Taskbar identity: without an explicit AppUserModelID the Windows taskbar shows
+# the generic python.exe icon even with window icons set (measured 2026-10-01).
+# Must be set BEFORE the Kivy window is created inside .run().
+try:
+    import ctypes
+    ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(
+        "Prekzursil.WhatsAppArchiveViewer")
+except Exception:
+    pass
+
+
+WhatsAppArchiveViewer().run()
 
 
 if __name__ == '__main__':

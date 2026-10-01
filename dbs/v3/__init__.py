@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-"""Version 3 database schema support for Whatsapp Msgstore Viewer.
+"""Version 3 database schema support for WhatsApp Archive Viewer.
 This package is automatically discovered by the application; it only needs
  to expose the `Database` class implemented in `db.py`.
 """
