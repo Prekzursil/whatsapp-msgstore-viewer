@@ -52,6 +52,36 @@ TASKBAR_IDENTITY_AUMID = "Prekzursil.WhatsAppArchiveViewer"
 # so an identity call placed after the imports returns S_OK but the taskbar
 # has already registered the window under the default process-path identity
 # (measured 2026-10-01: button automationId fell back to the pythonw path).
+
+def _set_taskbar_identity():
+    """Set the process AppUserModelID via a hardened ctypes prototype.
+
+    Returns the unsigned HRESULT (0x00000000 == S_OK). argtypes/restype are
+    explicit and this MUST run before any Kivy window exists.
+    """
+    try:
+        import ctypes
+        shell32 = ctypes.windll.shell32
+        shell32.SetCurrentProcessExplicitAppUserModelID.argtypes = [ctypes.c_wchar_p]
+        shell32.SetCurrentProcessExplicitAppUserModelID.restype = ctypes.HRESULT
+        return int(shell32.SetCurrentProcessExplicitAppUserModelID(TASKBAR_IDENTITY_AUMID)) & 0xFFFFFFFF
+    except Exception:
+        return 0xFFFFFFFF
+
+
+def _write_launch_receipt(hr):
+    """Append one startup receipt line: icon path, existence, AUMID HRESULT."""
+    try:
+        import time
+        line = '%s pid=%s icon=%s iconExists=%s aumid=%s aumidHr=0x%08X\n' % (
+            time.strftime('%Y-%m-%dT%H:%M:%S'), os.getpid(), ICON_PATH,
+            os.path.exists(ICON_PATH), TASKBAR_IDENTITY_AUMID, hr)
+        with open(r'D:\whatsapp-reunion\taskbar-verify\launch-receipt.log',
+                  'a', encoding='utf-8') as fh:
+            fh.write(line)
+    except Exception:
+        pass
+
 _AUMID_HRESULT = _set_taskbar_identity()
 _write_launch_receipt(_AUMID_HRESULT)
 
@@ -172,36 +202,6 @@ class WhatsAppArchiveViewer(MDApp):
     #
     #     if "meta" in modifiers or "ctrl" in modifiers and text == "r":
     #         self.rebuild()
-
-def _set_taskbar_identity():
-    """Set the process AppUserModelID via a hardened ctypes prototype.
-
-    Returns the unsigned HRESULT (0x00000000 == S_OK). argtypes/restype are
-    explicit and this MUST run before any Kivy window exists.
-    """
-    try:
-        import ctypes
-        shell32 = ctypes.windll.shell32
-        shell32.SetCurrentProcessExplicitAppUserModelID.argtypes = [ctypes.c_wchar_p]
-        shell32.SetCurrentProcessExplicitAppUserModelID.restype = ctypes.HRESULT
-        return int(shell32.SetCurrentProcessExplicitAppUserModelID(TASKBAR_IDENTITY_AUMID)) & 0xFFFFFFFF
-    except Exception:
-        return 0xFFFFFFFF
-
-
-def _write_launch_receipt(hr):
-    """Append one startup receipt line: icon path, existence, AUMID HRESULT."""
-    try:
-        import time
-        line = '%s pid=%s icon=%s iconExists=%s aumid=%s aumidHr=0x%08X\n' % (
-            time.strftime('%Y-%m-%dT%H:%M:%S'), os.getpid(), ICON_PATH,
-            os.path.exists(ICON_PATH), TASKBAR_IDENTITY_AUMID, hr)
-        with open(r'D:\whatsapp-reunion\taskbar-verify\launch-receipt.log',
-                  'a', encoding='utf-8') as fh:
-            fh.write(line)
-    except Exception:
-        pass
-
 
 def run():
     if hasattr(sys, '_MEIPASS'):
